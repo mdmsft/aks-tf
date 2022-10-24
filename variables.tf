@@ -26,19 +26,24 @@ variable "subscription_id" {
   type = string
 }
 
-variable "address_space" {
-  type    = string
-  default = "172.29.255.0/24"
+variable "client_id" {
+  type = string
 }
 
-variable "key_vault_soft_delete_retention_days" {
-  type    = number
-  default = 7
+variable "client_secret" {
+  type      = string
+  sensitive = true
+}
+
+variable "address_space" {
+  type    = string
+  default = "192.168.255.0/24"
 }
 
 variable "kubernetes_cluster_orchestrator_version" {
-  type    = string
-  default = "1.24.0"
+  type     = string
+  nullable = true
+  default  = null
 }
 
 variable "kubernetes_cluster_sku_tier" {
@@ -58,7 +63,7 @@ variable "kubernetes_cluster_azure_policy_enabled" {
 
 variable "kubernetes_cluster_service_cidr" {
   type    = string
-  default = "192.168.255.0/24"
+  default = "172.16.0.0/16"
 }
 
 variable "kubernetes_cluster_docker_bridge_cidr" {
@@ -73,7 +78,7 @@ variable "kubernetes_cluster_default_node_pool_vm_size" {
 
 variable "kubernetes_cluster_default_node_pool_max_pods" {
   type    = number
-  default = 10
+  default = 30
 }
 
 variable "kubernetes_cluster_default_node_pool_min_count" {
@@ -89,11 +94,6 @@ variable "kubernetes_cluster_default_node_pool_max_count" {
 variable "kubernetes_cluster_default_node_pool_os_disk_size_gb" {
   type    = number
   default = 64
-}
-
-variable "kubernetes_cluster_default_node_pool_os_disk_type" {
-  type    = string
-  default = "Ephemeral"
 }
 
 variable "kubernetes_cluster_default_node_pool_os_sku" {
@@ -124,7 +124,7 @@ variable "kubernetes_cluster_workload_node_pool_vm_size" {
 
 variable "kubernetes_cluster_workload_node_pool_max_pods" {
   type    = number
-  default = 10
+  default = 30
 }
 
 variable "kubernetes_cluster_workload_node_pool_min_count" {
@@ -140,11 +140,6 @@ variable "kubernetes_cluster_workload_node_pool_max_count" {
 variable "kubernetes_cluster_workload_node_pool_os_disk_size_gb" {
   type    = number
   default = 64
-}
-
-variable "kubernetes_cluster_workload_node_pool_os_disk_type" {
-  type    = string
-  default = "Ephemeral"
 }
 
 variable "kubernetes_cluster_workload_node_pool_os_sku" {
@@ -193,6 +188,56 @@ variable "kubernetes_cluster_open_service_mesh_enabled" {
   default = true
 }
 
+variable "kubernetes_cluster_microsoft_defender_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_key_vault_secrets_provider_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_oidc_issuer_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_workload_identity_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_service_cluster_administrators" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_cluster_users" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_rbac_administrators" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_rbac_cluster_administrators" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_rbac_readers" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_rbac_writers" {
+  type    = list(string)
+  default = []
+}
+
 variable "log_analytics_workspace_daily_quota_gb" {
   type    = number
   default = 1
@@ -205,5 +250,10 @@ variable "log_analytics_workspace_retention_in_days" {
 
 variable "container_registry_sku" {
   type    = string
-  default = "Standard"
+  default = "Basic"
+}
+
+variable "nat_gateway_public_ip_prefix_length" {
+  type    = number
+  default = 28
 }
