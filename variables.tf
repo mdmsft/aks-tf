@@ -26,19 +26,29 @@ variable "subscription_id" {
   type = string
 }
 
-variable "address_space" {
-  type    = string
-  default = "172.29.255.0/24"
+variable "client_id" {
+  type = string
 }
 
-variable "key_vault_soft_delete_retention_days" {
-  type    = number
-  default = 7
+variable "client_secret" {
+  type      = string
+  sensitive = true
+}
+
+variable "address_space" {
+  type    = string
+  default = "172.16.0.0/16"
+}
+
+variable "kubernetes_service_versions_include_preview" {
+  type    = bool
+  default = false
 }
 
 variable "kubernetes_cluster_orchestrator_version" {
-  type    = string
-  default = "1.24.0"
+  type     = string
+  nullable = true
+  default  = null
 }
 
 variable "kubernetes_cluster_sku_tier" {
@@ -58,7 +68,7 @@ variable "kubernetes_cluster_azure_policy_enabled" {
 
 variable "kubernetes_cluster_service_cidr" {
   type    = string
-  default = "192.168.255.0/24"
+  default = "172.16.0.0/16"
 }
 
 variable "kubernetes_cluster_docker_bridge_cidr" {
@@ -68,12 +78,12 @@ variable "kubernetes_cluster_docker_bridge_cidr" {
 
 variable "kubernetes_cluster_default_node_pool_vm_size" {
   type    = string
-  default = "Standard_D2d_v5"
+  default = "Standard_D2s_v5"
 }
 
 variable "kubernetes_cluster_default_node_pool_max_pods" {
   type    = number
-  default = 10
+  default = 30
 }
 
 variable "kubernetes_cluster_default_node_pool_min_count" {
@@ -88,12 +98,7 @@ variable "kubernetes_cluster_default_node_pool_max_count" {
 
 variable "kubernetes_cluster_default_node_pool_os_disk_size_gb" {
   type    = number
-  default = 64
-}
-
-variable "kubernetes_cluster_default_node_pool_os_disk_type" {
-  type    = string
-  default = "Ephemeral"
+  default = 32
 }
 
 variable "kubernetes_cluster_default_node_pool_os_sku" {
@@ -117,65 +122,37 @@ variable "kubernetes_cluster_default_node_pool_orchestrator_version" {
   nullable = true
 }
 
-variable "kubernetes_cluster_workload_node_pool_vm_size" {
-  type    = string
-  default = "Standard_D2d_v5"
-}
-
-variable "kubernetes_cluster_workload_node_pool_max_pods" {
-  type    = number
-  default = 10
-}
-
-variable "kubernetes_cluster_workload_node_pool_min_count" {
-  type    = number
-  default = 0
-}
-
-variable "kubernetes_cluster_workload_node_pool_max_count" {
-  type    = number
-  default = 3
-}
-
-variable "kubernetes_cluster_workload_node_pool_os_disk_size_gb" {
-  type    = number
-  default = 64
-}
-
-variable "kubernetes_cluster_workload_node_pool_os_disk_type" {
-  type    = string
-  default = "Ephemeral"
-}
-
-variable "kubernetes_cluster_workload_node_pool_os_sku" {
-  type    = string
-  default = "Ubuntu"
-}
-
-variable "kubernetes_cluster_workload_node_pool_max_surge" {
-  type    = string
-  default = "33%"
-}
-
-variable "kubernetes_cluster_workload_node_pool_availability_zones" {
-  type    = list(string)
-  default = ["1", "2", "3"]
-}
-
-variable "kubernetes_cluster_workload_node_pool_orchestrator_version" {
-  type     = string
-  default  = null
-  nullable = true
-}
-
-variable "kubernetes_cluster_workload_node_pool_labels" {
-  type    = map(string)
-  default = {}
-}
-
-variable "kubernetes_cluster_workload_node_pool_taints" {
-  type    = list(string)
-  default = []
+variable "kubernetes_cluster_node_pools" {
+  type = map(object({
+    vm_size              = string
+    min_count            = number
+    max_count            = number
+    max_pods             = number
+    max_surge            = string
+    os_disk_size_gb      = number
+    os_type              = string
+    os_sku               = string
+    orchestrator_version = string
+    zones                = list(string)
+    node_labels          = map(string)
+    node_taints          = list(string)
+  }))
+  default = {
+    workload = {
+      max_count            = 3
+      max_pods             = 30
+      max_surge            = "33%"
+      min_count            = 0
+      node_labels          = {}
+      node_taints          = []
+      orchestrator_version = null
+      os_disk_size_gb      = 32
+      os_type              = "Linux"
+      os_sku               = "Ubuntu"
+      vm_size              = "Standard_D4d_v5"
+      zones                = ["1", "2", "3"]
+    }
+  }
 }
 
 variable "kubernetes_cluster_network_plugin" {
@@ -193,6 +170,26 @@ variable "kubernetes_cluster_open_service_mesh_enabled" {
   default = true
 }
 
+variable "kubernetes_cluster_microsoft_defender_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_key_vault_secrets_provider_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_oidc_issuer_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_workload_identity_enabled" {
+  type    = bool
+  default = true
+}
+
 variable "log_analytics_workspace_daily_quota_gb" {
   type    = number
   default = 1
@@ -205,5 +202,40 @@ variable "log_analytics_workspace_retention_in_days" {
 
 variable "container_registry_sku" {
   type    = string
-  default = "Standard"
+  default = "Basic"
+}
+
+variable "nat_gateway_public_ip_prefix_length" {
+  type    = number
+  default = 28
+}
+
+variable "kubernetes_service_cluster_administrators" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_cluster_users" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_rbac_administrators" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_rbac_cluster_administrators" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_rbac_readers" {
+  type    = list(string)
+  default = []
+}
+
+variable "kubernetes_service_rbac_writers" {
+  type    = list(string)
+  default = []
 }
