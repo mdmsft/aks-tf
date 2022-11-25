@@ -1,6 +1,7 @@
 variable "project" {
-  type    = string
-  default = "contoso"
+  type     = string
+  nullable = true
+  default  = null
 }
 
 variable "location" {
@@ -18,21 +19,11 @@ variable "environment" {
   default = "dev"
 }
 
-variable "tenant_id" {
-  type = string
-}
-
-variable "subscription_id" {
-  type = string
-}
-
-variable "client_id" {
-  type = string
-}
-
-variable "client_secret" {
-  type      = string
-  sensitive = true
+variable "tags" {
+  type = map(string)
+  default = {
+    key = "aks"
+  }
 }
 
 variable "address_space" {
@@ -68,7 +59,7 @@ variable "kubernetes_cluster_azure_policy_enabled" {
 
 variable "kubernetes_cluster_service_cidr" {
   type    = string
-  default = "172.16.0.0/16"
+  default = "192.168.255.0/24"
 }
 
 variable "kubernetes_cluster_docker_bridge_cidr" {
@@ -98,7 +89,12 @@ variable "kubernetes_cluster_default_node_pool_max_count" {
 
 variable "kubernetes_cluster_default_node_pool_os_disk_size_gb" {
   type    = number
-  default = 32
+  default = 30
+}
+
+variable "kubernetes_cluster_default_node_pool_os_disk_type" {
+  type    = string
+  default = "Ephemeral"
 }
 
 variable "kubernetes_cluster_default_node_pool_os_sku" {
@@ -130,6 +126,7 @@ variable "kubernetes_cluster_node_pools" {
     max_pods             = number
     max_surge            = string
     os_disk_size_gb      = number
+    os_disk_type         = string
     os_type              = string
     os_sku               = string
     orchestrator_version = string
@@ -146,7 +143,8 @@ variable "kubernetes_cluster_node_pools" {
       node_labels          = {}
       node_taints          = []
       orchestrator_version = null
-      os_disk_size_gb      = 32
+      os_disk_size_gb      = 30
+      os_disk_type         = "Ephemeral"
       os_type              = "Linux"
       os_sku               = "Ubuntu"
       vm_size              = "Standard_D4d_v5"

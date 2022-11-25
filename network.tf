@@ -16,6 +16,18 @@ resource "azurerm_network_security_group" "cluster" {
   name                = "nsg-${local.resource_suffix}-aks"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
+
+  security_rule {
+    name                       = "AllowInternetHttpIn"
+    priority                   = 100
+    protocol                   = "Tcp"
+    access                     = "Allow"
+    direction                  = "Inbound"
+    source_address_prefix      = "Internet"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_ranges    = ["80", "443"]
+  }
 }
 
 resource "azurerm_subnet_network_security_group_association" "cluster" {

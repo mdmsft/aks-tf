@@ -8,10 +8,10 @@ locals {
 }
 
 resource "azurerm_kubernetes_cluster" "main" {
-  name                              = "aks-${local.context_name}"
+  name                              = "aks-${local.global_resource_suffix}"
   location                          = azurerm_resource_group.main.location
   resource_group_name               = azurerm_resource_group.main.name
-  dns_prefix                        = local.context_name
+  dns_prefix                        = local.global_resource_suffix
   automatic_channel_upgrade         = var.kubernetes_cluster_automatic_channel_upgrade
   role_based_access_control_enabled = true
   azure_policy_enabled              = var.kubernetes_cluster_azure_policy_enabled
@@ -40,6 +40,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     max_count                    = var.kubernetes_cluster_default_node_pool_max_count
     max_pods                     = var.kubernetes_cluster_default_node_pool_max_pods
     os_disk_size_gb              = var.kubernetes_cluster_default_node_pool_os_disk_size_gb
+    os_disk_type                 = var.kubernetes_cluster_default_node_pool_os_disk_type
     os_sku                       = var.kubernetes_cluster_default_node_pool_os_sku
     orchestrator_version         = local.kubernetes_cluster_default_node_pool_orchestrator_version
     only_critical_addons_enabled = true
@@ -91,6 +92,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "main" {
   max_count             = each.value.max_count
   max_pods              = each.value.max_pods
   os_disk_size_gb       = each.value.os_disk_size_gb
+  os_disk_type          = each.value.os_disk_type
   os_sku                = each.value.os_sku
   os_type               = each.value.os_type
   orchestrator_version  = local.kubernetes_cluster_node_pool_orchestrator_version[each.key]
