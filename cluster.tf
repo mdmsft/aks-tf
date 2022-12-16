@@ -7,6 +7,39 @@ locals {
   kubernetes_cluster_node_pool_orchestrator_version         = { for k, v in var.kubernetes_cluster_node_pools : k => v.orchestrator_version == null ? local.kubernetes_cluster_orchestrator_version : v.orchestrator_version }
 }
 
+resource "azurerm_user_assigned_identity" "cluster" {
+  name                = "id-${local.resource_suffix}-aks"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+}
+
+resource "azurerm_user_assigned_identity" "kubelet" {
+  name                = "id-${local.resource_suffix}-kubelet"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+}
+
+resource "azurerm_role_assignment" "cluster_network_contributor" {
+  role_definition_name             = "Network Contributor"
+  scope                            = azurerm_subnet.cluster.id
+  principal_id                     = azurerm_user_assigned_identity.cluster.principal_id
+  skip_service_principal_aad_check = true
+}
+
+resource "azurerm_role_assignment" "cluster_managed_identity_operator_kubelet" {
+  role_definition_name             = "Managed Identity Operator"
+  scope                            = azurerm_user_assigned_identity.kubelet.id
+  principal_id                     = azurerm_user_assigned_identity.cluster.principal_id
+  skip_service_principal_aad_check = true
+}
+
+resource "azurerm_role_assignment" "kubelet_registry_pull" {
+  role_definition_name             = "AcrPull"
+  scope                            = azurerm_container_registry.main.id
+  principal_id                     = azurerm_user_assigned_identity.kubelet.principal_id
+  skip_service_principal_aad_check = true
+}
+
 resource "azurerm_kubernetes_cluster" "main" {
   name                              = "aks-${local.global_resource_suffix}"
   location                          = azurerm_resource_group.main.location
@@ -31,7 +64,8 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   identity {
-    type = "SystemAssigned"
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.cluster.id]
   }
 
   default_node_pool {
@@ -47,7 +81,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     orchestrator_version         = local.kubernetes_cluster_default_node_pool_orchestrator_version
     only_critical_addons_enabled = true
     vnet_subnet_id               = azurerm_subnet.cluster.id
-    zones                        = var.kubernetes_cluster_default_node_pool_availability_zones
+    zones                        = var.kubernetes_cluster_default_node_pool_zones == null ? var.zones : var.kubernetes_cluster_default_node_pool_zones
 
     upgrade_settings {
       max_surge = var.kubernetes_cluster_default_node_pool_max_surge
@@ -60,7 +94,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   network_profile {
     network_plugin      = var.kubernetes_cluster_overlay_network_plugin_mode_enabled ? "azure" : var.kubernetes_cluster_network_plugin
-    network_policy      = var.kubernetes_cluster_network_policy
+    network_policy      = var.kubernetes_cluster_cilium_data_plane_enabled ? null : var.kubernetes_cluster_network_policy
     dns_service_ip      = cidrhost(var.kubernetes_cluster_service_cidr, 10)
     docker_bridge_cidr  = var.kubernetes_cluster_docker_bridge_cidr
     service_cidr        = var.kubernetes_cluster_service_cidr
@@ -68,6 +102,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     outbound_type       = "userAssignedNATGateway"
     ebpf_data_plane     = var.kubernetes_cluster_cilium_data_plane_enabled ? "cilium" : null
     network_plugin_mode = var.kubernetes_cluster_overlay_network_plugin_mode_enabled ? "Overlay" : null
+    pod_cidr            = var.kubernetes_cluster_network_plugin == "azure" && !var.kubernetes_cluster_overlay_network_plugin_mode_enabled ? null : var.kubernetes_cluster_pod_cidr
   }
 
   storage_profile {
@@ -76,6 +111,12 @@ resource "azurerm_kubernetes_cluster" "main" {
     disk_driver_version         = "v${var.kubernetes_cluster_disk_driver_version}"
     file_driver_enabled         = var.kubernetes_cluster_file_driver_enabled
     snapshot_controller_enabled = var.kubernetes_cluster_snapshot_controller_enabled
+  }
+
+  kubelet_identity {
+    client_id                 = azurerm_user_assigned_identity.kubelet.client_id
+    object_id                 = azurerm_user_assigned_identity.kubelet.principal_id
+    user_assigned_identity_id = azurerm_user_assigned_identity.kubelet.id
   }
 
   dynamic "key_vault_secrets_provider" {
@@ -92,6 +133,12 @@ resource "azurerm_kubernetes_cluster" "main" {
       log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
     }
   }
+
+  depends_on = [
+    azurerm_subnet_nat_gateway_association.cluster,
+    azurerm_role_assignment.cluster_network_contributor,
+    azurerm_role_assignment.cluster_managed_identity_operator_kubelet,
+  ]
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "main" {
@@ -109,25 +156,13 @@ resource "azurerm_kubernetes_cluster_node_pool" "main" {
   os_type               = each.value.os_type
   orchestrator_version  = local.kubernetes_cluster_node_pool_orchestrator_version[each.key]
   vnet_subnet_id        = azurerm_subnet.cluster.id
-  zones                 = each.value.zones
+  zones                 = each.value.zones == null ? var.zones : each.value.zones
   node_labels           = each.value.node_labels
   node_taints           = each.value.node_taints
 
   upgrade_settings {
     max_surge = each.value.max_surge
   }
-}
-
-resource "azurerm_role_assignment" "cluster_network_contributor" {
-  role_definition_name = "Network Contributor"
-  scope                = azurerm_subnet.cluster.id
-  principal_id         = azurerm_kubernetes_cluster.main.identity.0.principal_id
-}
-
-resource "azurerm_role_assignment" "cluster_registry_pull" {
-  role_definition_name = "AcrPull"
-  scope                = azurerm_container_registry.main.id
-  principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
 }
 
 resource "local_file" "kube_config" {

@@ -43,6 +43,11 @@ variable "client_secret" {
   sensitive = true
 }
 
+variable "zones" {
+  type    = list(string)
+  default = ["1", "2", "3"]
+}
+
 variable "address_space" {
   type    = string
   default = "172.16.0.0/16"
@@ -82,6 +87,11 @@ variable "kubernetes_cluster_service_cidr" {
 variable "kubernetes_cluster_docker_bridge_cidr" {
   type    = string
   default = "10.255.255.0/24"
+}
+
+variable "kubernetes_cluster_pod_cidr" {
+  type    = string
+  default = "172.17.0.0/16"
 }
 
 variable "kubernetes_cluster_default_node_pool_vm_size" {
@@ -124,9 +134,10 @@ variable "kubernetes_cluster_default_node_pool_max_surge" {
   default = "33%"
 }
 
-variable "kubernetes_cluster_default_node_pool_availability_zones" {
-  type    = list(string)
-  default = ["1", "2", "3"]
+variable "kubernetes_cluster_default_node_pool_zones" {
+  type     = list(string)
+  nullable = true
+  default  = null
 }
 
 variable "kubernetes_cluster_default_node_pool_orchestrator_version" {
@@ -165,7 +176,7 @@ variable "kubernetes_cluster_node_pools" {
       os_type              = "Linux"
       os_sku               = "Ubuntu"
       vm_size              = "Standard_D4d_v5"
-      zones                = ["1", "2", "3"]
+      zones                = null
     }
   }
 }

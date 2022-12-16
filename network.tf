@@ -41,7 +41,7 @@ resource "azurerm_public_ip_prefix" "cluster" {
   resource_group_name = azurerm_resource_group.main.name
   prefix_length       = var.nat_gateway_public_ip_prefix_length
   sku                 = "Standard"
-  zones               = ["1", "2", "3"]
+  zones               = var.zones
 }
 
 resource "azurerm_nat_gateway" "cluster" {
