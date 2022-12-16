@@ -205,6 +205,55 @@ variable "kubernetes_cluster_workload_identity_enabled" {
   default = true
 }
 
+variable "kubernetes_cluster_cilium_data_plane_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "kubernetes_cluster_overlay_network_plugin_mode_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "kubernetes_cluster_image_cleaner_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "kubernetes_cluster_image_cleaner_interval_hours" {
+  type    = number
+  default = 24
+}
+
+variable "kubernetes_cluster_blob_driver_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_disk_driver_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_file_driver_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_snapshot_controller_enabled" {
+  type    = bool
+  default = true
+}
+
+variable "kubernetes_cluster_disk_driver_version" {
+  type    = number
+  default = 1
+  validation {
+    condition     = contains([1, 2], var.kubernetes_cluster_disk_driver_version)
+    error_message = "Disk driver version must be 1 or 2"
+  }
+}
+
 variable "log_analytics_workspace_daily_quota_gb" {
   type    = number
   default = 1

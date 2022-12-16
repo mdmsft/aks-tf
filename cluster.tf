@@ -22,6 +22,8 @@ resource "azurerm_kubernetes_cluster" "main" {
   node_resource_group               = "rg-${local.resource_suffix}-aks"
   sku_tier                          = var.kubernetes_cluster_sku_tier
   workload_identity_enabled         = var.kubernetes_cluster_oidc_issuer_enabled && var.kubernetes_cluster_workload_identity_enabled
+  image_cleaner_enabled             = var.kubernetes_cluster_image_cleaner_enabled
+  image_cleaner_interval_hours      = var.kubernetes_cluster_image_cleaner_enabled ? var.kubernetes_cluster_image_cleaner_interval_hours : null
 
   azure_active_directory_role_based_access_control {
     managed            = true
@@ -57,13 +59,23 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   network_profile {
-    network_plugin     = var.kubernetes_cluster_network_plugin
-    network_policy     = var.kubernetes_cluster_network_policy
-    dns_service_ip     = cidrhost(var.kubernetes_cluster_service_cidr, 10)
-    docker_bridge_cidr = var.kubernetes_cluster_docker_bridge_cidr
-    service_cidr       = var.kubernetes_cluster_service_cidr
-    load_balancer_sku  = "standard"
-    outbound_type      = "userAssignedNATGateway"
+    network_plugin      = var.kubernetes_cluster_overlay_network_plugin_mode_enabled ? "azure" : var.kubernetes_cluster_network_plugin
+    network_policy      = var.kubernetes_cluster_network_policy
+    dns_service_ip      = cidrhost(var.kubernetes_cluster_service_cidr, 10)
+    docker_bridge_cidr  = var.kubernetes_cluster_docker_bridge_cidr
+    service_cidr        = var.kubernetes_cluster_service_cidr
+    load_balancer_sku   = "standard"
+    outbound_type       = "userAssignedNATGateway"
+    ebpf_data_plane     = var.kubernetes_cluster_cilium_data_plane_enabled ? "cilium" : null
+    network_plugin_mode = var.kubernetes_cluster_overlay_network_plugin_mode_enabled ? "Overlay" : null
+  }
+
+  storage_profile {
+    blob_driver_enabled         = var.kubernetes_cluster_blob_driver_enabled
+    disk_driver_enabled         = var.kubernetes_cluster_disk_driver_enabled
+    disk_driver_version         = "v${var.kubernetes_cluster_disk_driver_version}"
+    file_driver_enabled         = var.kubernetes_cluster_file_driver_enabled
+    snapshot_controller_enabled = var.kubernetes_cluster_snapshot_controller_enabled
   }
 
   dynamic "key_vault_secrets_provider" {
@@ -118,12 +130,15 @@ resource "azurerm_role_assignment" "cluster_registry_pull" {
   principal_id         = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
 }
 
-resource "null_resource" "kube_config" {
-  triggers = {
-    cluster = azurerm_kubernetes_cluster.main.id
-  }
+resource "local_file" "kube_config" {
+  filename = ".kube/config"
+  content  = azurerm_kubernetes_cluster.main.kube_config_raw
+
   provisioner "local-exec" {
-    command = "echo \"${azurerm_kubernetes_cluster.main.kube_config_raw}\" | tee .kubeconfig"
+    command = "kubelogin convert-kubeconfig -l spn --client-id ${var.client_id} --client-secret ${var.client_secret}"
+    environment = {
+      KUBECONFIG = ".kube/config"
+    }
   }
 }
 
@@ -149,7 +164,7 @@ resource "azurerm_role_assignment" "kubernetes_service_rbac_administrator" {
 }
 
 resource "azurerm_role_assignment" "kubernetes_service_rbac_cluster_administrator" {
-  for_each             = toset(var.kubernetes_service_rbac_cluster_administrators)
+  for_each             = toset(concat([data.azurerm_client_config.main.object_id], var.kubernetes_service_rbac_cluster_administrators))
   role_definition_name = "Azure Kubernetes Service RBAC Cluster Admin"
   principal_id         = each.value
   scope                = azurerm_kubernetes_cluster.main.id
