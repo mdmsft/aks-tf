@@ -113,6 +113,13 @@ resource "azurerm_kubernetes_cluster" "main" {
     snapshot_controller_enabled = var.kubernetes_cluster_snapshot_controller_enabled
   }
 
+  linux_profile {
+    admin_username = var.kubernetes_cluster_admin_username
+    ssh_key {
+      key_data = file(var.kubernetes_cluster_ssh_key_path)
+    }
+  }
+
   kubelet_identity {
     client_id                 = azurerm_user_assigned_identity.kubelet.client_id
     object_id                 = azurerm_user_assigned_identity.kubelet.principal_id

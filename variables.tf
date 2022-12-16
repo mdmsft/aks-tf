@@ -265,6 +265,16 @@ variable "kubernetes_cluster_disk_driver_version" {
   }
 }
 
+variable "kubernetes_cluster_admin_username" {
+  type    = string
+  default = "azure"
+}
+
+variable "kubernetes_cluster_ssh_key_path" {
+  type    = string
+  default = "~/.ssh/id_rsa.pub"
+}
+
 variable "log_analytics_workspace_daily_quota_gb" {
   type    = number
   default = 1
